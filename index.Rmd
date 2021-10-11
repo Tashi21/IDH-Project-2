@@ -1,0 +1,49 @@
+---
+title: "title"
+author: "Hitesh Khandelwal, Paritosh Panda, Sara Singh"
+date: "12/10/2021"
+output: html_document
+---
+
+# Introduction
+
+## Research Question
+
+# Research Hypothesis
+
+## Loading Libraries
+```{r load_libraries}
+library(gutenbergr)
+library(tidytext)
+library(tidyverse)
+library(dplyr)
+```
+
+## Generating Corpus
+```{r corpus}
+sherlock_download <- gutenberg_download(c(244, 2097, 2852, 3289, 1661, 834, 108, 2350), mirror="https://gutenberg.pglaf.org/", meta_fields = c("title", "author")) %>% # Downloads all the Sherlock Holmes books
+  mutate(Year = case_when(title == "A Study in Scarlet" ~ "1887",
+                          title == "The Sign of the Four" ~ "1890",
+                          title == "The Hound of the Baskervilles" ~ "1901",
+                          title == "The Valley of Fear" ~ "1914",
+                          title == "The Adventures of Sherlock Holmes" ~ "1892",
+                          title == "The Memoirs of Sherlock Holmes" ~ "1894",
+                          title == "The Return of Sherlock Holmes" ~ "1905",
+                          title == "His Last Bow: An Epilogue of Sherlock Holmes" ~ "1917")) %>% # Adds the corresponding years to each title
+  arrange(Year) # Arranging the table by year
+
+write_csv(sherlock_download, "sherlock_download.csv") # Downloads a CSV file of the data to maintain a backup.
+sherlock_import <- read_csv("sherlock_download.csv") # Imports the downloaded CSV file.
+```
+
+# Corpus Description
+
+# Corpus Summary
+
+# Data Visualization 1
+
+# Data Visualization 2
+
+# Conclusion
+
+# Reflection
