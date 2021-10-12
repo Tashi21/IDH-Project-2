@@ -1,41 +1,31 @@
 ---
-title: "title"
+title: "The Case of the Seemingly Perfect Protagonist"
 author: "Hitesh Khandelwal, Paritosh Panda, Sara Singh"
-date: "12/10/2021"
+date: "13/10/2021"
 output: html_document
 ---
+```{r load libraries, include=FALSE}
+# Loading all required libraries
 
-# Introduction
-
-## Research Question
-
-# Research Hypothesis
-
-## Loading Libraries
-```{r load_libraries}
 library(gutenbergr)
 library(tidytext)
 library(tidyverse)
-library(dplyr)
+library(widyr)
 ```
-
-## Generating Corpus
-```{r corpus, eval=FALSE}
-# Generates the initial corpus
-# Downloads all Sherlock Holmes books
+```{r corpus, eval=FALSE, include=FALSE}
+# Downloads all required Sherlock Holmes books
 
 sherlock_download <- gutenberg_download(c(244, 2097, 2852, 3289, 1661, 834, 108, 2350), mirror="https://gutenberg.pglaf.org/", meta_fields = c("title", "author"))
-```
 
-```{r backup, eval=FALSE}
 # Backing up and importing data
 
-write_csv(sherlock_download, "sherlock_download.csv") # Downloads a CSV file of the data to maintain a backup.
+write_csv(sherlock_download, "sherlock_download.csv")
 ```
+```{r tidy_text, include=FALSE}
+# Cleaning the text
 
-```{r tidy_text}
-# Tidying the text
-sherlock_import <- read_csv("sherlock_download.csv") # Imports the downloaded CSV file
+sherlock_import <- read.csv("sherlock_download.csv") %>%
+  select(-1) #Removes the gutenberg_id column
 
 sherlock_import <- sherlock_import %>%
     mutate(year = case_when(title == "A Study in Scarlet" ~ "1887",
@@ -46,22 +36,195 @@ sherlock_import <- sherlock_import %>%
                           title == "The Memoirs of Sherlock Holmes" ~ "1894",
                           title == "The Return of Sherlock Holmes" ~ "1905",
                           title == "His Last Bow: An Epilogue of Sherlock Holmes" ~ "1917")) %>% # Adds the corresponding years to each title
-  arrange(year) %>% # Arranging the table by year
-  unnest_tokens(word, text) %>%
-  anti_join(stop_words)
-
-sherlock_import <- na.omit(sherlock_import) %>% # Removes NA values
-  select(-1) #Removes the gutenberg_id column
+  arrange(year) # Arranging the table by year
 ```
+
+# Introduction
+
+It is common to conflate protagonists with heroes, and based on the genre or plot, we could be more prone to making such a conflation. It is usually tales that involve some kind of conquest, adventure or transformation that might hint at the protagonist being akin to the "hero" of the story. By hero, we mean that they're viewed as powerful people and are seen as generally on the side of "the good", and thus might be associated with positive sentiments throughout the novel, even if they partake in behaviour that might suggest otherwise. It is this phenomenon that made us curious about how characters are perceived in the larger world, and how their perception might differ in the world of the novel they belong to. Considering this, we created a formalized research question that we could test using sentiment analysis: _Is the protagonist always the quintessential hero? Further, does someone always need to be viewed as good for them to be on the side of “the good”?_
 
 # Corpus Description
 
-# Corpus Summary
+Before stating the research hypothesis, we found that it was important to locate the question in a particular corpus because of the specific nature of characters we’d be analyzing. We wished to analyze someone who fits the bill of a “hero” for the world at large, but perhaps not within the world of the novel. Further, to make the analysis stronger, we also wished to analyze a strong, recurring character so that we’d have a wealth of data to work with. Based on these stipulations, we narrowed our corpus down to the Sherlock Holmes series, written by Sir Arthur Conan Doyle. Sherlock Holmes is the protagonist of this series and he works as a detective, which invariably involves going on a series of adventures and experiencing several mishaps, thus fitting into the common trope we described earlier. He’s also often described as a genius, but also as someone with a cold demeanour. With this, we have a character who is arguably on the “good side” because he helps to solve crime; a character who is generally well-liked by readers; but also a character who classifies better as an anti-hero rather than a hero. Thus, the Sherlock Holmes series served as an ideal corpus to formulate a research hypothesis based on our initial question.
 
-# Data Visualization 1
+# Research Hypothesis
 
-# Data Visualization 2
+Our hypothesis is that “Sherlock Holmes will not be viewed positively by the characters of the series’ universe”.
+
+# Summary 
+
+The complete corpus of the Sherlock Holmes series comprises 4 novels and 56 short stories. Of these, we have all 4 novels: _A Study in Secret_ (1887), _The Sign of Four_ (1890), _The Hound of the Baskervilles_ (1901-1902), and _The Valley of Fear_ (1914-1915). Sir Arthur Conan Doyle wrote the 56 short stories in 5 collections of Sherlock Holmes books, of which we have 4, which amount to 44 short stories. These collections are _The Adventures of Sherlock Holmes_ (1892), _The Memoirs of Sherlock Holmes_ (1894), _The Return of Sherlock Holmes_ (1905), and _His Last Bow_ (1917). The only collection of short stories that is missing is The Case-Book of Sherlock Holmes (1927), which contains 12 short stories, and isn’t available on Project Gutenberg.
+
+The word count of the corpus amounts to a total of 600,012 words, giving us a little over half a million words to work with. The words with the highest frequencies are: Holmes (mentioned 2,317 times), time (mentioned 849 times), sir (mentioned 755 times), Watson (mentioned 754 times), house (mentioned 741 times), night (mentioned 664 times), door (mentioned 659 times), hand (mentioned 637 times), found (mentioned 559 times), and eyes (mentioned 549 times).
+
+The most frequently mentioned words are related to the main characters (Holmes and Watson), as well as words that suggest that spatial imagery plays a big role in this series (door, house, found, eyes, etc.). This isn’t surprising because the series largely revolves around Holmes’ and Watson’s adventures in solving crime, which would definitely involve hunting for clues quite often.
+
+```{r summary}
+freq_long <- sherlock_import %>%
+  unnest_tokens(word, text) %>%
+  count(word) %>%
+  arrange(desc(n))
+
+freq_short <- freq_long %>%
+  anti_join(stop_words)
+
+sum(freq_long$n) # Number of total words
+```
+```{r bigrams, include=FALSE}
+sherlock_bigrams <- sherlock_import %>%
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) #Creates bigram
+
+sherlock_bigrams <- na.omit(sherlock_bigrams) # Removes NA values
+
+sherlock_bigrams_filtered <- sherlock_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>% # Separates words into 2 different columns
+  filter(!word1 %in% stop_words$word) %>% # Removes the stop words
+  filter(!word2 %in% stop_words$word)
+
+sherlock_bigrams_reduced <- sherlock_bigrams_filtered %>%
+  filter(word1 %in% "sherlock" | word2 %in% "sherlock" | word1 %in% "holmes" | word2 %in% "holmes" | word1 %in% "detective" | word2 %in% "detective") # Creates table with only identifying words for Sherlock
+```
+```{r sentiments, include=FALSE}
+# Gets the lexicons
+
+afinn <- get_sentiments("afinn")
+bing <- get_sentiments("bing")
+
+# Creates table where the first word is the identifying word, using the Afinn lexicon
+
+word1a <- sherlock_bigrams_reduced %>%
+  filter(word1 == "sherlock" | word1 == "holmes" | word1 == "detective") %>%
+  inner_join(afinn, by = c(word2 = "word")) %>%
+  count(word2, value, sort = TRUE) %>%
+  mutate(total = value*n) %>%
+  rename(sentiment_word = word2)
+
+# Creates table where the second word is the identifying word, using the Afinn lexicon
+
+word2a <- sherlock_bigrams_reduced %>%
+  filter(word2 == "sherlock" | word2 == "holmes" | word2 == "detective") %>%
+  inner_join(afinn, by = c(word1 = "word")) %>%
+  count(word1, value, sort = TRUE) %>%
+  mutate(total = value*n)%>%
+  rename(sentiment_word = word1)
+
+# Creates table where the first word is the identifying word, using the Bing lexicon
+
+word1b <- sherlock_bigrams_reduced %>%
+  filter(word1 == "sherlock" | word1 == "holmes" | word1 == "detective") %>%
+  inner_join(bing, by = c(word2 = "word")) %>%
+  count(word2, sentiment, sort = TRUE) %>%
+  add_count(sentiment)%>%
+  rename(sentiment_word = word2)
+
+# Creates table where the second word is the identifying word, using the Bing lexicon
+
+word2b <- sherlock_bigrams_reduced %>%
+  filter(word2 == "sherlock" | word2 == "holmes" | word2 == "detective") %>%
+  inner_join(bing, by = c(word1 = "word")) %>%
+  count(word1, sentiment, sort = TRUE) %>%
+  add_count(sentiment)%>%
+  rename(sentiment_word = word1)
+
+# Combines the Afinn tables into 1 table
+
+afinn_sentiments <- bind_rows(word1a, word2a) %>%
+  arrange(sentiment_word) %>%
+  group_by(sentiment_word) %>%
+  summarise_each(funs(sum)) %>%
+  select(-2:-3)
+
+# Combines the Bing tables into 1 table
+
+bing_sentiments <- bind_rows(word1b, word2b)
+```
+
+# Data Visualisation 1: Sentiment Analysis
+
+For the first data visualization, we used the Bing and Afinn sentiment lexicons to analyze sentiment surrounding the words ‘Holmes’, ‘Sherlock’, and ‘detective’. These were the words we used to identify Sherlock as a character in the texts. We tokenized the words as bigrams and dropped all rows in which none of the words were the 3 identifying words. For both Afinn and Bing, we did an ```inner_join()``` of the lexicons, leaving us with the sentiment words before or after the identifying word.
+
+```{r bing_graph}
+# Plots the bing histogram
+
+bing_sentiments %>%
+  ggplot(aes(sentiment)) + 
+  geom_histogram(stat="count")
+```
+
+The Bing histogram shows that a greater number of negative words were used around the subject of our study (44) as compared to positive words (35), showing that the character was mostly described with negative words. This could include adverbs (showing an action being seen as negative, so it is negative but limited to a moment in time) or just adjectives (describing the actual character, not limited to a moment in time).
+
+```{r afinn_graph}
+# Plots the graph for Afinn analysis
+
+afinn_sentiments %>%
+  ggplot(aes(total)) + 
+  geom_histogram(binwidth = 1)
+```
+
+The Afinn histogram shows that a cluster forms around 0. Negative values seem more concentrated here, with a high frequency of words with the value -2. Words with positive values are more spread out, whereas there is only one outlier on the negative side of the x-axis.
+
+```{r afinn}
+# Displays tibble of Afinn sentiment values
+arrange(afinn_sentiments, desc(total))
+```
+
+“Smiled” was the highest positive valued word in Afinn, but a character smiling isn’t an indication of agreeability because someone can smile sarcastically, sadly, cruelly, etc. For example, in His Last Bow _“Holmes smiled with an expression of weary patience”_, indicating a negative and sarcastic tone.
+
+“Dear” was the second-highest positive value. But this might be a case where Afinn might fail to accurately detect sentiment, as it might just be the way people addressed others in the 20th century. In the series, most instances of “dear“ were when Watson addressed Holmes, which is indicative of Watson’s manner of speaking. It is interesting that the only mention of “dear” with Sherlock is by Watson, his closest friend, and not by other characters. Other mentions of the word, while not for Sherlock, are very common and seem to be just a common manner of speaking.
+
+# Data Visualisation 2: Correlations
+
+For this tool, we looked at the most significant correlations for the words ‘detective’, ‘Sherlock’, and ‘Holmes’. We filtered the data to only show us results that are less than or equal to 0.05 in the correlation value, giving us only significant results.
+
+```{r correlation, include=FALSE}
+# Models table as required for data, dividing the text into sections and then filtering out stop_words
+
+sherlock_import <- sherlock_import %>%
+  mutate(section = row_number() %/% 10) %>%
+  filter(section > 0) %>%
+  unnest_tokens(word, text) %>%
+  filter(!word %in% stop_words$word)
+
+# Creates table of correlations
+
+sherlock_cors <- sherlock_import %>%
+  group_by(word) %>%
+  filter(n() >= 20) %>%
+  pairwise_cor(word, section, sort = TRUE)
+```
+```{r correlation_graph}
+
+# Shows graph of correlations surrounding the identifying words and performing an inner_join of the Bing lexicon, letting us look at correlations with sentiment words
+
+sherlock_cors %>%
+  filter(item1 == "sherlock" | item1 == "holmes" | item1 == "detective")%>%
+  inner_join(bing, by = c(item2 = "word")) %>%
+  group_by(item1) %>%
+  slice_max(correlation, n = 6) %>%
+  ungroup() %>%
+  mutate(item2 = reorder(item2, correlation)) %>%
+  ggplot(aes(item2, correlation)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ item1, scales = "free") +
+  coord_flip()
+```
+
+From the correlation graphs we found that the word ‘gravely’ was associated with all 3 character identifiers we chose, with a significance value of around 0.04 for all. ‘Smart’ was mentioned for ‘detective’ and ‘Sherlock’, but not for ‘Holmes’. Most of the negative words have been correlated to the word ‘Holmes’. From this, it is possible to infer that for people who know Sherlock Holmes closely, referring to him by positive terms is not an unlikely event, as well as for people who purely know him in his capacity as a detective. However, our results might have been affected by the fact that Sherlock has a brother with the same surname as him, and so some of the words might have correlated with mentions of Mycroft as well.
 
 # Conclusion
 
+Based on the results of our 2 data visualizations, we find that we have more evidence in support of our hypothesis than not, with the exception being Afinn’s sentiment analysis of our corpus. However, even with Afinn, we showed that many of the words it assigned positive values to were not used in a strictly positive context. Of course, this can be said about the negative words too, but we believe that the correlations we found for our hypothesis helped to corroborate our hypothesis.
+
+However, the data we presented is still riddled with confounders, such as the presence of Mycroft Holmes and the lack of access to seeing sentiment around Sherlock’s pronouns.
+
+As for answering our research question(s), we conclude that no, Sherlock is not the quintessential hero, nor does he need to be viewed as one in order to be on the side of ‘the good’. We also believe that this is an assessment that is transferable to other bodies of literature.
+
 # Reflection
+
+We found that the tools we had available for conducting a sentiment analysis on R were much more powerful than what we had at our disposal with Voyant. Data could be manipulated with a lot more ease, and since we were the ones writing the code, there was no confusion about what a certain data point might mean; everything was very clear to us regarding _what_ the data represents. In Voyant, there were several tools that were either confusing to use or confusing to interpret since it didn’t offer justifications for what each tool can do, and in which situations.
+
+However, there were quite a few limitations as well. One of the main limitations we found was that the lexicon used for the tools might not fully capture the common lexicon of the 19th and 20th Centuries (which is when Sherlock Holmes was written). We also found that Afinn’s system of grading words with a certain value (ranging from -5 to 5) in order to imply the extent of their positive or negative meaning was rather arbitrary, and might not always align with the context of the text. For example, assigning “cried” as a negative word could very well be false in case the subject was just shouting loudly rather than crying out of sadness. Bing, on the other hand, classifies words as only negative or positive, which makes the sentiment analysis over-simplified (this is partly resolved by Afinn, but it still stands that its gradation of words can be seen as arbitrary). Finally, we did not end up using NRC because it classified words in a peculiar way that we didn’t agree with. For example, the word ‘dying’ was associated with the sentiment of ‘anger’, but dying is not an act that is necessarily angry.
+
+Apart from all this, there is the general limitation found throughout Voyant and R, and probably in other tools too, which is that we’re limited in our analysis by the lack of information we have about how people feel about Sherlock Holmes while only referring to him by his pronouns.
+
+Overall, R proved to be a lot more useful and nuanced than what Voyant was offering, but it was still not perfect. However, given the limitations of our own skill as well as the limitations of technology in general, we weren’t expecting it to not leave us with some loose ends.
